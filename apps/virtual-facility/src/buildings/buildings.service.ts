@@ -4,7 +4,9 @@ import { UpdateBuildingDto } from './dto/update-building.dto';
 
 @Injectable()
 export class BuildingsService {
-  create(createBuildingDto: CreateBuildingDto) {
+  async create(createBuildingDto: CreateBuildingDto) {
+    // TODO: Insert a new building into the database
+    await this.createWorkflow(1);
     return 'This action adds a new building';
   }
 
@@ -22,5 +24,13 @@ export class BuildingsService {
 
   remove(id: number) {
     return `This action removes a #${id} building`;
+  }
+
+  async createWorkflow(buildingId: number) {
+    return fetch('http://localhost:3001/workflows', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'My Workflow', buildingId }),
+    }).then((res) => res.text());
   }
 }
