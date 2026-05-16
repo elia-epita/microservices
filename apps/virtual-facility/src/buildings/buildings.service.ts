@@ -1,36 +1,63 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBuildingDto } from './dto/create-building.dto';
 import { UpdateBuildingDto } from './dto/update-building.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Building } from './entities/building.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class BuildingsService {
+  constructor(
+    @InjectRepository(Building)
+    private readonly buildingRepository: Repository<Building>,
+  ) {}
+
   async create(createBuildingDto: CreateBuildingDto) {
-    // TODO: Insert a new building into the database
-    await this.createWorkflow(1);
-    return 'This action adds a new building';
+    const building = this.buildingRepository.create(createBuildingDto);
+    const newBuildingEntity = await this.buildingRepository.save(building);
+
+    await this.createWorkflow(newBuildingEntity.id);
+    return newBuildingEntity;
   }
 
   findAll() {
-    return `This action returns all buildings`;
+    return this.buildingRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} building`;
+  async findOne(id: number) {
+    const building = await this.buildingRepository.findOne({ where: { id } });
+    if (!building) {
+      throw new NotFoundException(`Building #${id} does not exist`);
+    }
+    return building;
   }
 
-  update(id: number, updateBuildingDto: UpdateBuildingDto) {
-    return `This action updates a #${id} building`;
+  async update(id: number, updateBuildingDto: UpdateBuildingDto) {
+    const building = await this.buildingRepository.preload({
+      id: +id,
+      ...updateBuildingDto,
+    });
+    if (!building) {
+      throw new NotFoundException(`Building #${id} does not exist`);
+    }
+    return this.buildingRepository.save(building);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} building`;
+  async remove(id: number) {
+    const building = await this.findOne(id);
+    return this.buildingRepository.remove(building);
   }
 
   async createWorkflow(buildingId: number) {
-    return fetch('http://workflows-service:3001/workflows', {
+    console.log(JSON.stringify({ name: 'My Workflow', buildingId }));
+    const response = await fetch('http://workflows-service:3001/workflows', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'My Workflow', buildingId }),
-    }).then((res) => res.text());
+    });
+
+    const newWorkflow = await response.json();
+    console.log({ newWorkflow });
+    return newWorkflow;
   }
 }

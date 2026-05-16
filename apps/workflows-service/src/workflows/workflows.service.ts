@@ -1,26 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
+import { Workflow } from './entities/workflow.entity';
 
 @Injectable()
 export class WorkflowsService {
+  constructor(
+    @InjectRepository(Workflow)
+    private readonly workflowRepository: Repository<Workflow>,
+  ) {}
+
   create(createWorkflowDto: CreateWorkflowDto) {
-    return 'This action adds a new workflow';
+    const workflow = this.workflowRepository.create(createWorkflowDto);
+    return this.workflowRepository.save(workflow);
   }
 
   findAll() {
-    return `This action returns all workflows`;
+    return this.workflowRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} workflow`;
+  async findOne(id: number) {
+    const workflow = await this.workflowRepository.findOne({ where: { id } });
+    if (!workflow) {
+      throw new NotFoundException(`Workflow #${id} does not exist`);
+    }
+    return workflow;
   }
 
-  update(id: number, updateWorkflowDto: UpdateWorkflowDto) {
-    return `This action updates a #${id} workflow`;
+  async update(id: number, updateWorkflowDto: UpdateWorkflowDto) {
+    const workflow = await this.workflowRepository.preload({
+      id: +id,
+      ...updateWorkflowDto,
+    });
+    if (!workflow) {
+      throw new NotFoundException(`Workflow #${id} does not exist`);
+    }
+    return this.workflowRepository.save(workflow);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} workflow`;
+  async remove(id: number) {
+    const workflow = await this.findOne(id);
+    return this.workflowRepository.remove(workflow);
   }
 }
